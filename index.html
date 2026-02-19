@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Web3 Game</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+
+<style>
+.coin-float {
+  position: fixed;
+  color: gold;
+  font-weight: bold;
+  animation: floatUp 1s ease-out forwards;
+}
+@keyframes floatUp {
+  0% { opacity:1; transform:translateY(0); }
+  100% { opacity:0; transform:translateY(-60px); }
+}
+</style>
+</head>
+
+<body class="bg-gradient-to-br from-pink-100 to-purple-100 min-h-screen">
+
+<!-- HEADER -->
+<div class="p-4 flex justify-between bg-purple-600 text-white">
+  <h1 id="title">🎮 Web3 Game</h1>
+
+  <div class="flex gap-3 items-center">
+    💰 <span id="coins">0</span>
+    ⭐ <span id="score">0</span>
+    🪙 <span id="token">0</span>
+    ❤️ <span id="lives">3</span>
+    ⏰ <span id="time">5</span>
+
+    <button onclick="connectWallet()" class="bg-white text-purple-600 px-3 py-1 rounded">
+      🦊 Connect
+    </button>
+  </div>
+</div>
+
+<!-- GAME -->
+<div class="p-6 text-center">
+  <p id="request" class="text-xl mb-4">กดเริ่มเกม</p>
+
+  <button onclick="startGame()" class="bg-green-500 text-white px-6 py-3 rounded mb-6">
+    🎮 เริ่มเกม
+  </button>
+
+  <div id="items" class="grid grid-cols-2 gap-4 max-w-md mx-auto"></div>
+</div>
+
+<script>
+// ===== CONFIG =====
+const contractAddress = "0xd9145CCE52D386f254917e481eB44e9943F39138";
+
+const abi = [
+  "function claim(uint256 amount)",
+  "function getMyBalance() view returns (uint256)"
+];
+
+// ===== WEB3 =====
+let provider, signer, contract, user;
+
+async function connectWallet() {
+  if (!window.ethereum) {
+    alert("ติดตั้ง MetaMask ก่อน");
+    return;
+  }
+
+  try {
+    // 🔥 บังคับให้ MetaMask popup เลือกบัญชี
+    await window.ethereum.request({
+      method: "wallet_requestPermissions",
+      params: [{ eth_accounts: {} }]
+    });
+
+    const accounts = await window.ethereum.request({
+      method: "eth_requestAccounts"
+    });
+
+    user = accounts[0];
+
+    await switchNetwork();
+
+    provider = new ethers.providers.Web3Provider(window.ethereum);
+    signer = provider.getSigner();
+
+    contract = new ethers.Contract(contractAddress, abi, signer);
+
+    document.getElementById("title").innerText =
+      "🎮 " + user.slice(0,6) + "...";
+
+    alert("✅ เชื่อมต่อสำเร็จ");
+
+    getTokenBalance();
+
+  } catch (err) {
+    console.error(err);
+    alert("❌ เชื่อมต่อไม่สำเร็จ");
+  }
+}
+
+async function switchNetwork() {
+  try {
+    await window.ethereum.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: "0x61" }]
+    });
+  } catch {
+    await window.ethereum.request({
+      method: "wallet_addEthereumChain",
+      params: [{
+        chainId: "0x61",
+        chainName: "BNB Testnet",
+        nativeCurrency: { name:"tBNB", symbol:"tBNB", decimals:18 },
+        rpcUrls: ["https://bsc-testnet.publicnode.com"],
+        blockExplorerUrls: ["https://testnet.bscscan.com"]
+      }]
+    });
+  }
+}
+
+async function getTokenBalance() {
+  if (!contract) return;
+
+  const bal = await contract.getMyBalance();
+
+  document.getElementById("token").innerText =
+    parseFloat(ethers.utils.formatEther(bal)).toFixed(4);
+}
+
+// ===== SOUND =====
+let audioCtx;
+function playSound() {
+  if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+
+  osc.frequency.value = 800;
+  gain.gain.value = 0.1;
+
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.1);
+}
+
+// ===== EFFECT =====
+function showCoin(x,y,val){
+  const el = document.createElement("div");
+  el.className="coin-float";
+  el.innerText = `+${val} 💰`;
+  el.style.left=x+"px";
+  el.style.top=y+"px";
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),1000);
+}
+
+// ===== GAME =====
+let coins=0, score=0, answer="", round=0, maxRound=10;
+let lives=3, timer=null, timeLeft=5;
+
+const items = [
+  {id:"red", text:"👕 เสื้อแดง"},
+  {id:"blue", text:"👕 เสื้อฟ้า"},
+  {id:"green", text:"👕 เสื้อเขียว"},
+  {id:"pink", text:"👗 ชมพู"}
+];
+
+function render(){
+  document.getElementById("items").innerHTML =
+    items.map(i=>`<button onclick="select('${i.id}',event)" class="bg-white p-4 rounded shadow">${i.text}</button>`).join("");
+}
+
+function startGame(){
+  coins=0; score=0; round=0;
+  lives=3;
+
+  document.getElementById("coins").innerText=coins;
+  document.getElementById("score").innerText=score;
+  document.getElementById("lives").innerText=lives;
+
+  next();
+}
+
+function next(){
+  if(round>=maxRound || lives<=0) return endGame();
+
+  render();
+
+  const r = items[Math.floor(Math.random()*items.length)];
+  answer=r.id;
+
+  document.getElementById("request").innerText="เอา "+r.text;
+
+  startTimer();
+}
+
+// ⏰ TIMER
+function startTimer(){
+  clearInterval(timer);
+
+  timeLeft=5;
+  document.getElementById("time").innerText=timeLeft;
+
+  timer = setInterval(()=>{
+    timeLeft--;
+    document.getElementById("time").innerText=timeLeft;
+
+    if(timeLeft<=0){
+      clearInterval(timer);
+
+      lives--;
+      document.getElementById("lives").innerText=lives;
+
+      alert("⏰ หมดเวลา!");
+
+      round++;
+      next();
+    }
+  },1000);
+}
+
+function select(id,e){
+  const btn=e.target;
+
+  clearInterval(timer);
+
+  if(id===answer){
+    playSound();
+
+    coins+=10;
+    score++;
+
+    const rect=btn.getBoundingClientRect();
+    showCoin(rect.left,rect.top,10);
+
+  } else {
+    lives--;
+    document.getElementById("lives").innerText=lives;
+
+    alert("❌ ผิด! เหลือชีวิต "+lives);
+  }
+
+  document.getElementById("coins").innerText=coins;
+  document.getElementById("score").innerText=score;
+
+  round++;
+  next();
+}
+
+// ===== CLAIM =====
+async function rewardPlayer(){
+  if(!contract) return alert("เชื่อม wallet ก่อน");
+
+  try{
+    const amount = ethers.utils.parseEther(coins.toString());
+
+    const tx = await contract.claim(amount);
+    await tx.wait();
+
+    alert("🎉 ได้ Token แล้ว!");
+    getTokenBalance();
+
+  }catch(err){
+    console.error(err);
+    alert("❌ Claim ไม่สำเร็จ");
+  }
+}
+
+// ===== END =====
+function endGame(){
+  clearInterval(timer);
+
+  document.getElementById("items").innerHTML="";
+
+  alert("🏁 จบเกม! ได้ "+coins+" เหรียญ");
+
+  rewardPlayer();
+}
+</script>
+
+</body>
+</html>
