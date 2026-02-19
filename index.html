@@ -1,289 +1,620 @@
 <!doctype html>
-<html lang="th">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Web3 Game</title>
-
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-
-<style>
-.coin-float {
-  position: fixed;
-  color: gold;
-  font-weight: bold;
-  animation: floatUp 1s ease-out forwards;
-}
-@keyframes floatUp {
-  0% { opacity:1; transform:translateY(0); }
-  100% { opacity:0; transform:translateY(-60px); }
-}
-</style>
-</head>
-
-<body class="bg-gradient-to-br from-pink-100 to-purple-100 min-h-screen">
-
-<!-- HEADER -->
-<div class="p-4 flex justify-between bg-purple-600 text-white">
-  <h1 id="title">🎮 Web3 Game</h1>
-
-  <div class="flex gap-3 items-center">
-    💰 <span id="coins">0</span>
-    ⭐ <span id="score">0</span>
-    🪙 <span id="token">0</span>
-    ❤️ <span id="lives">3</span>
-    ⏰ <span id="time">5</span>
-
-    <button onclick="connectWallet()" class="bg-white text-purple-600 px-3 py-1 rounded">
-      🦊 Connect
-    </button>
-  </div>
-</div>
-
-<!-- GAME -->
-<div class="p-6 text-center">
-  <p id="request" class="text-xl mb-4">กดเริ่มเกม</p>
-
-  <button onclick="startGame()" class="bg-green-500 text-white px-6 py-3 rounded mb-6">
-    🎮 เริ่มเกม
-  </button>
-
-  <div id="items" class="grid grid-cols-2 gap-4 max-w-md mx-auto"></div>
-</div>
-
-<script>
-// ===== CONFIG =====
-const contractAddress = "0xd9145CCE52D386f254917e481eB44e9943F39138";
-
-const abi = [
-  "function claim(uint256 amount)",
-  "function getMyBalance() view returns (uint256)"
-];
-
-// ===== WEB3 =====
-let provider, signer, contract, user;
-
-async function connectWallet() {
-  if (!window.ethereum) {
-    alert("ติดตั้ง MetaMask ก่อน");
-    return;
-  }
-
-  try {
-    // 🔥 บังคับให้ MetaMask popup เลือกบัญชี
-    await window.ethereum.request({
-      method: "wallet_requestPermissions",
-      params: [{ eth_accounts: {} }]
-    });
-
-    const accounts = await window.ethereum.request({
-      method: "eth_requestAccounts"
-    });
-
-    user = accounts[0];
-
-    await switchNetwork();
-
-    provider = new ethers.providers.Web3Provider(window.ethereum);
-    signer = provider.getSigner();
-
-    contract = new ethers.Contract(contractAddress, abi, signer);
-
-    document.getElementById("title").innerText =
-      "🎮 " + user.slice(0,6) + "...";
-
-    alert("✅ เชื่อมต่อสำเร็จ");
-
-    getTokenBalance();
-
-  } catch (err) {
-    console.error(err);
-    alert("❌ เชื่อมต่อไม่สำเร็จ");
-  }
-}
-
-async function switchNetwork() {
-  try {
-    await window.ethereum.request({
-      method: "wallet_switchEthereumChain",
-      params: [{ chainId: "0x61" }]
-    });
-  } catch {
-    await window.ethereum.request({
-      method: "wallet_addEthereumChain",
-      params: [{
-        chainId: "0x61",
-        chainName: "BNB Testnet",
-        nativeCurrency: { name:"tBNB", symbol:"tBNB", decimals:18 },
-        rpcUrls: ["https://bsc-testnet.publicnode.com"],
-        blockExplorerUrls: ["https://testnet.bscscan.com"]
-      }]
-    });
-  }
-}
-
-async function getTokenBalance() {
-  if (!contract) return;
-
-  const bal = await contract.getMyBalance();
-
-  document.getElementById("token").innerText =
-    parseFloat(ethers.utils.formatEther(bal)).toFixed(4);
-}
-
-// ===== SOUND =====
-let audioCtx;
-function playSound() {
-  if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-
-  osc.frequency.value = 800;
-  gain.gain.value = 0.1;
-
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-
-  osc.start();
-  osc.stop(audioCtx.currentTime + 0.1);
-}
-
-// ===== EFFECT =====
-function showCoin(x,y,val){
-  const el = document.createElement("div");
-  el.className="coin-float";
-  el.innerText = `+${val} 💰`;
-  el.style.left=x+"px";
-  el.style.top=y+"px";
-  document.body.appendChild(el);
-  setTimeout(()=>el.remove(),1000);
-}
-
-// ===== GAME =====
-let coins=0, score=0, answer="", round=0, maxRound=10;
-let lives=3, timer=null, timeLeft=5;
-
-const items = [
-  {id:"red", text:"👕 เสื้อแดง"},
-  {id:"blue", text:"👕 เสื้อฟ้า"},
-  {id:"green", text:"👕 เสื้อเขียว"},
-  {id:"pink", text:"👗 ชมพู"}
-];
-
-function render(){
-  document.getElementById("items").innerHTML =
-    items.map(i=>`<button onclick="select('${i.id}',event)" class="bg-white p-4 rounded shadow">${i.text}</button>`).join("");
-}
-
-function startGame(){
-  coins=0; score=0; round=0;
-  lives=3;
-
-  document.getElementById("coins").innerText=coins;
-  document.getElementById("score").innerText=score;
-  document.getElementById("lives").innerText=lives;
-
-  next();
-}
-
-function next(){
-  if(round>=maxRound || lives<=0) return endGame();
-
-  render();
-
-  const r = items[Math.floor(Math.random()*items.length)];
-  answer=r.id;
-
-  document.getElementById("request").innerText="เอา "+r.text;
-
-  startTimer();
-}
-
-// ⏰ TIMER
-function startTimer(){
-  clearInterval(timer);
-
-  timeLeft=5;
-  document.getElementById("time").innerText=timeLeft;
-
-  timer = setInterval(()=>{
-    timeLeft--;
-    document.getElementById("time").innerText=timeLeft;
-
-    if(timeLeft<=0){
-      clearInterval(timer);
-
-      lives--;
-      document.getElementById("lives").innerText=lives;
-
-      alert("⏰ หมดเวลา!");
-
-      round++;
-      next();
+<html lang="th" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Web3 Emoji Game</title>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Fredoka', sans-serif; }
+    
+    .coin-float {
+      position: fixed;
+      font-weight: bold;
+      font-size: 1.5rem;
+      pointer-events: none;
+      z-index: 1000;
+      animation: floatUp 1.2s ease-out forwards;
     }
-  },1000);
-}
+    
+    @keyframes floatUp {
+      0% { opacity: 1; transform: translateY(0) scale(1); }
+      50% { opacity: 1; transform: translateY(-30px) scale(1.2); }
+      100% { opacity: 0; transform: translateY(-80px) scale(0.8); }
+    }
+    
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 20px rgba(168, 85, 247, 0.4); }
+      50% { box-shadow: 0 0 40px rgba(168, 85, 247, 0.8); }
+    }
+    
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-10px); }
+      40% { transform: translateX(10px); }
+      60% { transform: translateX(-10px); }
+      80% { transform: translateX(10px); }
+    }
+    
+    @keyframes bounce-in {
+      0% { transform: scale(0); opacity: 0; }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    
+    @keyframes sparkle {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.1); }
+    }
+    
+    .item-card {
+      animation: bounce-in 0.4s ease-out forwards;
+      transition: all 0.2s ease;
+    }
+    
+    .item-card:hover {
+      transform: scale(1.05);
+    }
+    
+    .item-card:active {
+      transform: scale(0.95);
+    }
+    
+    .shake { animation: shake 0.5s ease; }
+    .pulse-glow { animation: pulse-glow 2s infinite; }
+    .sparkle { animation: sparkle 1s infinite; }
+    
+    .gradient-text {
+      background: linear-gradient(135deg, #f472b6, #a855f7, #6366f1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .glass-card {
+      background: rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    .timer-bar {
+      transition: width 0.1s linear;
+    }
+    
+    .correct-flash {
+      animation: correct-pulse 0.5s ease;
+    }
+    
+    @keyframes correct-pulse {
+      0% { background-color: rgba(34, 197, 94, 0.3); }
+      100% { background-color: transparent; }
+    }
+    
+    .wrong-flash {
+      animation: wrong-pulse 0.5s ease;
+    }
+    
+    @keyframes wrong-pulse {
+      0% { background-color: rgba(239, 68, 68, 0.3); }
+      100% { background-color: transparent; }
+    }
+  </style>
+  <style>body { box-sizing: border-box; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full overflow-auto">
+  <div id="app-container" class="min-h-full w-full bg-gradient-to-br from-purple-900 via-indigo-900 to-pink-900"><!-- Decorative Background Elements -->
+   <div class="fixed inset-0 overflow-hidden pointer-events-none">
+    <div class="absolute top-10 left-10 text-6xl opacity-20 sparkle">
+     🎮
+    </div>
+    <div class="absolute top-20 right-20 text-5xl opacity-20 sparkle" style="animation-delay: 0.3s">
+     💎
+    </div>
+    <div class="absolute bottom-20 left-20 text-5xl opacity-20 sparkle" style="animation-delay: 0.6s">
+     🚀
+    </div>
+    <div class="absolute bottom-10 right-10 text-6xl opacity-20 sparkle" style="animation-delay: 0.9s">
+     ⭐
+    </div>
+   </div><!-- Header -->
+   <header class="relative z-10 p-4">
+    <div class="glass-card rounded-2xl p-4">
+     <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+      <h1 id="game-title" class="text-2xl md:text-3xl font-bold gradient-text">🎮 Web3 Emoji Quest</h1>
+      <div class="flex flex-wrap justify-center gap-3 items-center">
+       <div class="glass-card px-4 py-2 rounded-xl flex items-center gap-2"><span class="text-2xl">💰</span> <span id="coins" class="text-white font-bold text-lg">0</span>
+       </div>
+       <div class="glass-card px-4 py-2 rounded-xl flex items-center gap-2"><span class="text-2xl">⭐</span> <span id="score" class="text-white font-bold text-lg">0</span>
+       </div>
+       <div class="glass-card px-4 py-2 rounded-xl flex items-center gap-2"><span class="text-2xl">🪙</span> <span id="token" class="text-white font-bold text-lg">0</span>
+       </div>
+       <div class="glass-card px-4 py-2 rounded-xl flex items-center gap-2"><span id="lives-display" class="text-2xl">❤️❤️❤️</span>
+       </div><button id="wallet-btn" onclick="connectWallet()" class="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white px-5 py-2 rounded-xl font-bold flex items-center gap-2 transition-all hover:scale-105 active:scale-95"> <span>🦊</span> <span id="wallet-text">Connect</span> </button>
+      </div>
+     </div>
+    </div>
+   </header><!-- Main Game Area -->
+   <main class="relative z-10 p-6">
+    <div class="max-w-2xl mx-auto"><!-- Timer Bar -->
+     <div id="timer-container" class="mb-6 hidden">
+      <div class="glass-card rounded-full p-1">
+       <div id="timer-bar" class="timer-bar h-3 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full" style="width: 100%"></div>
+      </div>
+      <p class="text-center text-white/70 mt-2 text-sm">⏰ เหลือเวลา <span id="time-left">5</span> วินาที</p>
+     </div><!-- Request Display -->
+     <div id="request-card" class="glass-card rounded-3xl p-8 mb-6 text-center pulse-glow">
+      <p id="request" class="text-2xl md:text-3xl text-white font-medium">🎯 กดเริ่มเกมเพื่อเล่น!</p>
+      <p id="round-info" class="text-white/60 mt-3 hidden">รอบที่ <span id="current-round">0</span> / <span id="max-rounds">10</span></p>
+     </div><!-- Start Button -->
+     <div id="start-container" class="text-center mb-8"><button id="start-btn" onclick="startGame()" class="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-10 py-4 rounded-2xl font-bold text-xl transition-all hover:scale-105 active:scale-95 shadow-lg shadow-green-500/30"> 🎮 เริ่มเกม </button>
+     </div><!-- Items Grid -->
+     <div id="items" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div><!-- Game Over Modal -->
+     <div id="game-over-modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div class="glass-card rounded-3xl p-8 max-w-md w-full text-center">
+       <h2 class="text-4xl mb-4">🏆</h2>
+       <h3 id="game-over-title" class="text-2xl font-bold text-white mb-4">จบเกม!</h3>
+       <div class="space-y-3 mb-6">
+        <p class="text-white/80">คะแนนที่ได้: <span id="final-score" class="text-yellow-400 font-bold text-xl">0</span> ⭐</p>
+        <p class="text-white/80">เหรียญที่ได้: <span id="final-coins" class="text-yellow-400 font-bold text-xl">0</span> 💰</p>
+       </div>
+       <div class="flex flex-col gap-3"><button onclick="claimTokens()" id="claim-btn" class="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-6 py-3 rounded-xl font-bold transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"> 🪙 Claim Token </button> <button onclick="restartGame()" class="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-6 py-3 rounded-xl font-bold transition-all hover:scale-105"> 🔄 เล่นอีกครั้ง </button>
+       </div>
+      </div>
+     </div><!-- Toast Container -->
+     <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+    </div>
+   </main><!-- Footer -->
+   <footer class="relative z-10 p-4 text-center text-white/40 text-sm">
+    <p>🎮 Web3 Emoji Quest - Play &amp; Earn on BNB Testnet</p>
+   </footer>
+  </div>
+  <script>
+    // ===== CONFIG =====
+    const defaultConfig = {
+      game_title: "🎮 Web3 Emoji Quest",
+      start_button_text: "🎮 เริ่มเกม",
+      background_color: "#1e1b4b",
+      surface_color: "rgba(255, 255, 255, 0.25)",
+      text_color: "#ffffff",
+      primary_action: "#22c55e",
+      secondary_action: "#a855f7"
+    };
 
-function select(id,e){
-  const btn=e.target;
+    let config = { ...defaultConfig };
 
-  clearInterval(timer);
+    const contractAddress = "0xd9145CCE52D386f254917e481eB44e9943F39138";
+    const abi = [
+      "function claim(uint256 amount)",
+      "function getMyBalance() view returns (uint256)"
+    ];
 
-  if(id===answer){
-    playSound();
+    // ===== EMOJI DATA =====
+    const emojiCategories = [
+      { name: "ผลไม้", emojis: ["🍎", "🍊", "🍋", "🍇", "🍓", "🍑", "🍒", "🥝", "🍌", "🍉"] },
+      { name: "สัตว์", emojis: ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🦁"] },
+      { name: "อาหาร", emojis: ["🍕", "🍔", "🌮", "🍜", "🍣", "🍩", "🍪", "🎂", "🍦", "🧁"] },
+      { name: "กีฬา", emojis: ["⚽", "🏀", "🏈", "⚾", "🎾", "🏐", "🎱", "🏓", "🏸", "🥊"] },
+      { name: "ยานพาหนะ", emojis: ["🚗", "🚕", "🚌", "🚎", "🏎️", "🚓", "🚑", "🚒", "✈️", "🚀"] },
+      { name: "ธรรมชาติ", emojis: ["🌸", "🌺", "🌻", "🌹", "🌷", "🌵", "🌴", "🍀", "🌈", "⭐"] }
+    ];
 
-    coins+=10;
-    score++;
+    // ===== GAME STATE =====
+    let provider, signer, contract, user;
+    let coins = 0, score = 0, answer = "", round = 0, maxRound = 10;
+    let lives = 3, timeLeft = 5, timerInterval = null;
+    let gameActive = false, totalCoinsEarned = 0;
 
-    const rect=btn.getBoundingClientRect();
-    showCoin(rect.left,rect.top,10);
+    // ===== TOAST SYSTEM =====
+    function showToast(message, type = "info") {
+      const container = document.getElementById("toast-container");
+      const toast = document.createElement("div");
+      
+      const colors = {
+        success: "from-green-500 to-emerald-500",
+        error: "from-red-500 to-rose-500",
+        info: "from-blue-500 to-indigo-500",
+        warning: "from-yellow-500 to-orange-500"
+      };
+      
+      toast.className = `bg-gradient-to-r ${colors[type]} text-white px-6 py-3 rounded-xl font-medium shadow-lg transform transition-all duration-300 translate-x-full`;
+      toast.innerHTML = message;
+      container.appendChild(toast);
+      
+      requestAnimationFrame(() => {
+        toast.classList.remove("translate-x-full");
+      });
+      
+      setTimeout(() => {
+        toast.classList.add("translate-x-full", "opacity-0");
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
 
-  } else {
-    lives--;
-    document.getElementById("lives").innerText=lives;
+    // ===== WEB3 FUNCTIONS =====
+    async function connectWallet() {
+      if (!window.ethereum) {
+        showToast("❌ กรุณาติดตั้ง MetaMask ก่อน", "error");
+        return;
+      }
 
-    alert("❌ ผิด! เหลือชีวิต "+lives);
-  }
+      try {
+        await window.ethereum.request({
+          method: "wallet_requestPermissions",
+          params: [{ eth_accounts: {} }]
+        });
 
-  document.getElementById("coins").innerText=coins;
-  document.getElementById("score").innerText=score;
+        const accounts = await window.ethereum.request({
+          method: "eth_requestAccounts"
+        });
 
-  round++;
-  next();
-}
+        user = accounts[0];
+        await switchNetwork();
 
-// ===== CLAIM =====
-async function rewardPlayer(){
-  if(!contract) return alert("เชื่อม wallet ก่อน");
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        signer = provider.getSigner();
+        contract = new ethers.Contract(contractAddress, abi, signer);
 
-  try{
-    const amount = ethers.utils.parseEther(coins.toString());
+        document.getElementById("wallet-text").innerText = user.slice(0, 6) + "..." + user.slice(-4);
+        showToast("✅ เชื่อมต่อ Wallet สำเร็จ!", "success");
+        getTokenBalance();
 
-    const tx = await contract.claim(amount);
-    await tx.wait();
+      } catch (err) {
+        console.error(err);
+        showToast("❌ เชื่อมต่อไม่สำเร็จ", "error");
+      }
+    }
 
-    alert("🎉 ได้ Token แล้ว!");
-    getTokenBalance();
+    async function switchNetwork() {
+      try {
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: "0x61" }]
+        });
+      } catch {
+        await window.ethereum.request({
+          method: "wallet_addEthereumChain",
+          params: [{
+            chainId: "0x61",
+            chainName: "BNB Testnet",
+            nativeCurrency: { name: "tBNB", symbol: "tBNB", decimals: 18 },
+            rpcUrls: ["https://bsc-testnet.publicnode.com"],
+            blockExplorerUrls: ["https://testnet.bscscan.com"]
+          }]
+        });
+      }
+    }
 
-  }catch(err){
-    console.error(err);
-    alert("❌ Claim ไม่สำเร็จ");
-  }
-}
+    async function getTokenBalance() {
+      if (!contract) return;
+      try {
+        const bal = await contract.getMyBalance();
+        document.getElementById("token").innerText = parseFloat(ethers.utils.formatEther(bal)).toFixed(4);
+      } catch (err) {
+        console.error("Error getting balance:", err);
+      }
+    }
 
-// ===== END =====
-function endGame(){
-  clearInterval(timer);
+    async function claimTokens() {
+      if (!contract || !user) {
+        showToast("⚠️ กรุณาเชื่อมต่อ Wallet ก่อน", "warning");
+        return;
+      }
 
-  document.getElementById("items").innerHTML="";
+      if (totalCoinsEarned <= 0) {
+        showToast("⚠️ ไม่มีเหรียญให้ Claim", "warning");
+        return;
+      }
 
-  alert("🏁 จบเกม! ได้ "+coins+" เหรียญ");
+      const claimBtn = document.getElementById("claim-btn");
+      claimBtn.disabled = true;
+      claimBtn.innerText = "⏳ กำลังดำเนินการ...";
 
-  rewardPlayer();
-}
-</script>
+      try {
+        const amount = ethers.utils.parseEther(totalCoinsEarned.toString());
+        const tx = await contract.claim(amount);
+        showToast("⏳ กำลังยืนยัน Transaction...", "info");
+        await tx.wait();
+        
+        showToast(`✅ Claim ${totalCoinsEarned} Token สำเร็จ!`, "success");
+        totalCoinsEarned = 0;
+        getTokenBalance();
+        claimBtn.innerText = "✅ Claimed!";
+      } catch (err) {
+        console.error(err);
+        showToast("❌ Claim ไม่สำเร็จ", "error");
+        claimBtn.disabled = false;
+        claimBtn.innerText = "🪙 Claim Token";
+      }
+    }
 
-</body>
+    // ===== SOUND =====
+    let audioCtx;
+    function playSound(type = "correct") {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        
+        if (type === "correct") {
+          osc.frequency.value = 800;
+          gain.gain.value = 0.1;
+        } else if (type === "wrong") {
+          osc.frequency.value = 300;
+          gain.gain.value = 0.1;
+        } else if (type === "gameOver") {
+          osc.frequency.value = 200;
+          gain.gain.value = 0.15;
+        }
+        
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.15);
+      } catch (e) {
+        // Audio not supported
+      }
+    }
+
+    // ===== EFFECTS =====
+    function showCoin(x, y, val) {
+      const el = document.createElement("div");
+      el.className = "coin-float";
+      el.innerHTML = `+${val} 💰`;
+      el.style.left = x + "px";
+      el.style.top = y + "px";
+      el.style.color = "#fbbf24";
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 1200);
+    }
+
+    function updateLivesDisplay() {
+      const livesEl = document.getElementById("lives-display");
+      livesEl.innerHTML = "❤️".repeat(lives) + "🖤".repeat(3 - lives);
+    }
+
+    // ===== GAME LOGIC =====
+    function startGame() {
+      coins = 0;
+      score = 0;
+      lives = 3;
+      round = 0;
+      totalCoinsEarned = 0;
+      gameActive = true;
+
+      document.getElementById("coins").innerText = "0";
+      document.getElementById("score").innerText = "0";
+      updateLivesDisplay();
+      document.getElementById("start-container").classList.add("hidden");
+      document.getElementById("timer-container").classList.remove("hidden");
+      document.getElementById("round-info").classList.remove("hidden");
+      document.getElementById("game-over-modal").classList.add("hidden");
+
+      nextRound();
+    }
+
+    function nextRound() {
+      if (!gameActive) return;
+      
+      round++;
+      document.getElementById("current-round").innerText = round;
+      document.getElementById("max-rounds").innerText = maxRound;
+
+      if (round > maxRound || lives <= 0) {
+        endGame();
+        return;
+      }
+
+      // Pick random category and emojis
+      const category = emojiCategories[Math.floor(Math.random() * emojiCategories.length)];
+      const shuffled = [...category.emojis].sort(() => Math.random() - 0.5);
+      const selected = shuffled.slice(0, 4);
+      answer = selected[Math.floor(Math.random() * 4)];
+
+      document.getElementById("request").innerHTML = `หา <span class="text-4xl">${answer}</span>`;
+      
+      renderItems(selected);
+      startTimer();
+    }
+
+    function renderItems(emojis) {
+      const container = document.getElementById("items");
+      container.innerHTML = "";
+
+      emojis.forEach((emoji, index) => {
+        const btn = document.createElement("button");
+        btn.className = "item-card glass-card p-6 rounded-2xl text-5xl md:text-6xl hover:bg-white/30 transition-all cursor-pointer";
+        btn.style.animationDelay = `${index * 0.1}s`;
+        btn.innerHTML = emoji;
+        btn.onclick = (e) => checkAnswer(emoji, e);
+        container.appendChild(btn);
+      });
+    }
+
+    function startTimer() {
+      timeLeft = 5 + Math.floor(round / 3); // More time as rounds progress
+      const maxTime = timeLeft;
+      
+      clearInterval(timerInterval);
+      
+      const timerBar = document.getElementById("timer-bar");
+      const timeLeftEl = document.getElementById("time-left");
+      
+      timerInterval = setInterval(() => {
+        timeLeft -= 0.1;
+        const percentage = (timeLeft / maxTime) * 100;
+        timerBar.style.width = percentage + "%";
+        timeLeftEl.innerText = Math.ceil(timeLeft);
+        
+        // Change color based on time
+        if (percentage < 30) {
+          timerBar.className = "timer-bar h-3 bg-gradient-to-r from-red-500 to-rose-500 rounded-full";
+        } else if (percentage < 60) {
+          timerBar.className = "timer-bar h-3 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full";
+        } else {
+          timerBar.className = "timer-bar h-3 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full";
+        }
+        
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          handleWrong();
+        }
+      }, 100);
+    }
+
+    function checkAnswer(selected, event) {
+      if (!gameActive) return;
+      
+      clearInterval(timerInterval);
+
+      if (selected === answer) {
+        handleCorrect(event);
+      } else {
+        handleWrong();
+      }
+    }
+
+    function handleCorrect(event) {
+      playSound("correct");
+      
+      const bonus = Math.ceil(timeLeft);
+      const earnedCoins = 10 + bonus;
+      
+      coins += earnedCoins;
+      score += 100 + (bonus * 10);
+      totalCoinsEarned += earnedCoins;
+
+      document.getElementById("coins").innerText = coins;
+      document.getElementById("score").innerText = score;
+
+      if (event) {
+        const rect = event.target.getBoundingClientRect();
+        showCoin(rect.left + rect.width / 2, rect.top, earnedCoins);
+      }
+
+      document.getElementById("request-card").classList.add("correct-flash");
+      setTimeout(() => document.getElementById("request-card").classList.remove("correct-flash"), 500);
+
+      setTimeout(nextRound, 800);
+    }
+
+    function handleWrong() {
+      playSound("wrong");
+      lives--;
+      updateLivesDisplay();
+
+      document.getElementById("request-card").classList.add("shake", "wrong-flash");
+      setTimeout(() => {
+        document.getElementById("request-card").classList.remove("shake", "wrong-flash");
+      }, 500);
+
+      if (lives <= 0) {
+        setTimeout(endGame, 500);
+      } else {
+        setTimeout(nextRound, 800);
+      }
+    }
+
+    function endGame() {
+      gameActive = false;
+      clearInterval(timerInterval);
+      playSound("gameOver");
+
+      document.getElementById("items").innerHTML = "";
+      document.getElementById("timer-container").classList.add("hidden");
+      
+      document.getElementById("final-score").innerText = score;
+      document.getElementById("final-coins").innerText = totalCoinsEarned;
+      
+      if (lives <= 0) {
+        document.getElementById("game-over-title").innerText = "💔 หมดหัวใจ!";
+      } else {
+        document.getElementById("game-over-title").innerText = "🏆 ผ่านทุกรอบ!";
+      }
+
+      document.getElementById("game-over-modal").classList.remove("hidden");
+      
+      const claimBtn = document.getElementById("claim-btn");
+      claimBtn.disabled = !user || totalCoinsEarned <= 0;
+      claimBtn.innerText = "🪙 Claim Token";
+    }
+
+    function restartGame() {
+      document.getElementById("game-over-modal").classList.add("hidden");
+      document.getElementById("start-container").classList.remove("hidden");
+      document.getElementById("round-info").classList.add("hidden");
+      document.getElementById("request").innerHTML = "🎯 กดเริ่มเกมเพื่อเล่น!";
+    }
+
+    // ===== ELEMENT SDK =====
+    async function onConfigChange(cfg) {
+      config = { ...defaultConfig, ...cfg };
+      
+      const gameTitle = config.game_title || defaultConfig.game_title;
+      const startButtonText = config.start_button_text || defaultConfig.start_button_text;
+      const bgColor = config.background_color || defaultConfig.background_color;
+      const surfaceColor = config.surface_color || defaultConfig.surface_color;
+      const textColor = config.text_color || defaultConfig.text_color;
+      const primaryAction = config.primary_action || defaultConfig.primary_action;
+      const secondaryAction = config.secondary_action || defaultConfig.secondary_action;
+
+      document.getElementById("game-title").innerText = gameTitle;
+      document.getElementById("start-btn").innerText = startButtonText;
+      
+      document.getElementById("app-container").style.background = `linear-gradient(135deg, ${bgColor}, ${secondaryAction}40, ${bgColor})`;
+    }
+
+    function mapToCapabilities(cfg) {
+      return {
+        recolorables: [
+          {
+            get: () => cfg.background_color || defaultConfig.background_color,
+            set: (v) => { cfg.background_color = v; window.elementSdk.setConfig({ background_color: v }); }
+          },
+          {
+            get: () => cfg.surface_color || defaultConfig.surface_color,
+            set: (v) => { cfg.surface_color = v; window.elementSdk.setConfig({ surface_color: v }); }
+          },
+          {
+            get: () => cfg.text_color || defaultConfig.text_color,
+            set: (v) => { cfg.text_color = v; window.elementSdk.setConfig({ text_color: v }); }
+          },
+          {
+            get: () => cfg.primary_action || defaultConfig.primary_action,
+            set: (v) => { cfg.primary_action = v; window.elementSdk.setConfig({ primary_action: v }); }
+          },
+          {
+            get: () => cfg.secondary_action || defaultConfig.secondary_action,
+            set: (v) => { cfg.secondary_action = v; window.elementSdk.setConfig({ secondary_action: v }); }
+          }
+        ],
+        borderables: [],
+        fontEditable: undefined,
+        fontSizeable: undefined
+      };
+    }
+
+    function mapToEditPanelValues(cfg) {
+      return new Map([
+        ["game_title", cfg.game_title || defaultConfig.game_title],
+        ["start_button_text", cfg.start_button_text || defaultConfig.start_button_text]
+      ]);
+    }
+
+    // Initialize SDK
+    if (window.elementSdk) {
+      window.elementSdk.init({
+        defaultConfig,
+        onConfigChange,
+        mapToCapabilities,
+        mapToEditPanelValues
+      });
+    }
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9d06bc92531545b4',t:'MTc3MTUxNDMwNC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
