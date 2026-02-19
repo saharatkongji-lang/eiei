@@ -3,8 +3,7 @@
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Web3 Emoji Game</title>
-  <script src="/_sdk/element_sdk.js"></script>
+  <title>Web3 Emoji Game - รับ tBNB</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
@@ -39,17 +38,6 @@
       80% { transform: translateX(10px); }
     }
     
-    @keyframes bounce-in {
-      0% { transform: scale(0); opacity: 0; }
-      50% { transform: scale(1.2); }
-      100% { transform: scale(1); opacity: 1; }
-    }
-    
-    @keyframes sparkle {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(1.1); }
-    }
-    
     .item-card {
       animation: bounce-in 0.4s ease-out forwards;
       transition: all 0.2s ease;
@@ -65,7 +53,6 @@
     
     .shake { animation: shake 0.5s ease; }
     .pulse-glow { animation: pulse-glow 2s infinite; }
-    .sparkle { animation: sparkle 1s infinite; }
     
     .gradient-text {
       background: linear-gradient(135deg, #f472b6, #a855f7, #6366f1);
@@ -102,57 +89,70 @@
       100% { background-color: transparent; }
     }
   </style>
-  <style>body { box-sizing: border-box; }</style>
-  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
  </head>
- <body class="h-full overflow-auto">
-  <div id="app-container" class="min-h-full w-full bg-gradient-to-br from-purple-900 via-indigo-900 to-pink-900"><!-- Decorative Background Elements -->
-   <div class="fixed inset-0 overflow-hidden pointer-events-none">
-    <div class="absolute top-10 left-10 text-6xl opacity-20 sparkle">
-     🎮
-    </div>
-    <div class="absolute top-20 right-20 text-5xl opacity-20 sparkle" style="animation-delay: 0.3s">
-     💎
-    </div>
-    <div class="absolute bottom-20 left-20 text-5xl opacity-20 sparkle" style="animation-delay: 0.6s">
-     🚀
-    </div>
-    <div class="absolute bottom-10 right-10 text-6xl opacity-20 sparkle" style="animation-delay: 0.9s">
-     ⭐
-    </div>
-   </div><!-- Header -->
-   <header class="relative z-10 p-4">
+ <body class="h-full overflow-auto bg-gradient-to-br from-purple-900 via-indigo-900 to-pink-900">
+  <div class="min-h-full w-full">
+   <!-- Header -->
+   <header class="p-4">
     <div class="glass-card rounded-2xl p-4">
      <div class="flex flex-col md:flex-row justify-between items-center gap-4">
-      <h1 id="game-title" class="text-2xl md:text-3xl font-bold gradient-text">🎮 Web3 Emoji Quest</h1>
+      <h1 class="text-2xl md:text-3xl font-bold gradient-text">🎮 Web3 Emoji Quest</h1>
       <div class="flex flex-wrap justify-center gap-3 items-center">
-       <div class="glass-card px-4 py-2 rounded-xl flex items-center gap-2"><span class="text-2xl">💰</span> <span id="coins" class="text-white font-bold text-lg">0</span>
+       <div class="glass-card px-4 py-2 rounded-xl flex items-center gap-2">
+        <span class="text-2xl">💰</span> <span id="coins" class="text-white font-bold text-lg">0</span>
        </div>
-       <div class="glass-card px-4 py-2 rounded-xl flex items-center gap-2"><span class="text-2xl">⭐</span> <span id="score" class="text-white font-bold text-lg">0</span>
+       <div class="glass-card px-4 py-2 rounded-xl flex items-center gap-2">
+        <span class="text-2xl">⭐</span> <span id="score" class="text-white font-bold text-lg">0</span>
        </div>
-       <div class="glass-card px-4 py-2 rounded-xl flex items-center gap-2"><span class="text-2xl">🪙</span> <span id="token" class="text-white font-bold text-lg">0</span>
+       <div class="glass-card px-4 py-2 rounded-xl flex items-center gap-2">
+        <span id="lives-display" class="text-2xl">❤️❤️❤️</span>
        </div>
-       <div class="glass-card px-4 py-2 rounded-xl flex items-center gap-2"><span id="lives-display" class="text-2xl">❤️❤️❤️</span>
-       </div><button id="wallet-btn" onclick="connectWallet()" class="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white px-5 py-2 rounded-xl font-bold flex items-center gap-2 transition-all hover:scale-105 active:scale-95"> <span>🦊</span> <span id="wallet-text">Connect</span> </button>
+       <div class="glass-card px-4 py-2 rounded-xl flex items-center gap-2">
+        <span class="text-2xl">💵</span> <span id="wallet-balance" class="text-white font-bold text-lg">0</span> <span class="text-white/60 text-sm">tBNB</span>
+       </div>
+       <button id="wallet-btn" onclick="connectWallet()" class="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white px-5 py-2 rounded-xl font-bold flex items-center gap-2 transition-all hover:scale-105 active:scale-95">
+        <span>🦊</span> <span id="wallet-text">Connect Wallet</span>
+       </button>
       </div>
      </div>
     </div>
-   </header><!-- Main Game Area -->
-   <main class="relative z-10 p-6">
-    <div class="max-w-2xl mx-auto"><!-- Timer Bar -->
+   </header>
+
+   <!-- Treasury Info -->
+   <div class="max-w-2xl mx-auto px-6 mb-4">
+    <div class="bg-gradient-to-r from-yellow-600 to-orange-600 rounded-2xl p-3 text-white text-center">
+     <p class="text-sm">กระเป๋ากลาง: <span class="font-mono">0x4338E2...a7e2</span> (จ่ายรางวัลให้ผู้เล่น)</p>
+    </div>
+   </div>
+
+   <!-- Main Game Area -->
+   <main class="p-6">
+    <div class="max-w-2xl mx-auto">
+     <!-- Timer Bar -->
      <div id="timer-container" class="mb-6 hidden">
       <div class="glass-card rounded-full p-1">
        <div id="timer-bar" class="timer-bar h-3 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full" style="width: 100%"></div>
       </div>
       <p class="text-center text-white/70 mt-2 text-sm">⏰ เหลือเวลา <span id="time-left">5</span> วินาที</p>
-     </div><!-- Request Display -->
+     </div>
+
+     <!-- Request Display -->
      <div id="request-card" class="glass-card rounded-3xl p-8 mb-6 text-center pulse-glow">
       <p id="request" class="text-2xl md:text-3xl text-white font-medium">🎯 กดเริ่มเกมเพื่อเล่น!</p>
       <p id="round-info" class="text-white/60 mt-3 hidden">รอบที่ <span id="current-round">0</span> / <span id="max-rounds">10</span></p>
-     </div><!-- Start Button -->
-     <div id="start-container" class="text-center mb-8"><button id="start-btn" onclick="startGame()" class="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-10 py-4 rounded-2xl font-bold text-xl transition-all hover:scale-105 active:scale-95 shadow-lg shadow-green-500/30"> 🎮 เริ่มเกม </button>
-     </div><!-- Items Grid -->
-     <div id="items" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div><!-- Game Over Modal -->
+     </div>
+
+     <!-- Start Button -->
+     <div id="start-container" class="text-center mb-8">
+      <button id="start-btn" onclick="startGame()" class="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-10 py-4 rounded-2xl font-bold text-xl transition-all hover:scale-105 active:scale-95 shadow-lg shadow-green-500/30">
+       🎮 เริ่มเกม
+      </button>
+     </div>
+
+     <!-- Items Grid -->
+     <div id="items" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+
+     <!-- Game Over Modal -->
      <div id="game-over-modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
       <div class="glass-card rounded-3xl p-8 max-w-md w-full text-center">
        <h2 class="text-4xl mb-4">🏆</h2>
@@ -160,50 +160,49 @@
        <div class="space-y-3 mb-6">
         <p class="text-white/80">คะแนนที่ได้: <span id="final-score" class="text-yellow-400 font-bold text-xl">0</span> ⭐</p>
         <p class="text-white/80">เหรียญที่ได้: <span id="final-coins" class="text-yellow-400 font-bold text-xl">0</span> 💰</p>
+        <p class="text-white/80">จะได้รับ: <span id="reward-amount" class="text-green-400 font-bold text-xl">0</span> tBNB</p>
        </div>
-       <div class="flex flex-col gap-3"><button onclick="claimTokens()" id="claim-btn" class="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-6 py-3 rounded-xl font-bold transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"> 🪙 Claim Token </button> <button onclick="restartGame()" class="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-6 py-3 rounded-xl font-bold transition-all hover:scale-105"> 🔄 เล่นอีกครั้ง </button>
+       <div class="flex flex-col gap-3">
+        <button onclick="receiveReward()" id="receive-btn" class="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white px-6 py-3 rounded-xl font-bold transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
+         🎁 รับรางวัลเป็น tBNB
+        </button>
+        <button onclick="restartGame()" class="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-6 py-3 rounded-xl font-bold transition-all hover:scale-105">
+         🔄 เล่นอีกครั้ง
+        </button>
        </div>
       </div>
-     </div><!-- Toast Container -->
+     </div>
+
+     <!-- Loading Modal -->
+     <div id="loading-modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div class="glass-card rounded-3xl p-8 max-w-md w-full text-center">
+       <div class="text-5xl mb-4 animate-spin">⏳</div>
+       <h3 class="text-xl font-bold text-white mb-2">กำลังดำเนินการ</h3>
+       <p id="loading-message" class="text-white/80">กรุณารอสักครู่...</p>
+      </div>
+     </div>
+
+     <!-- Toast Container -->
      <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
     </div>
-   </main><!-- Footer -->
-   <footer class="relative z-10 p-4 text-center text-white/40 text-sm">
-    <p>🎮 Web3 Emoji Quest - Play &amp; Earn on BNB Testnet</p>
-   </footer>
+   </main>
   </div>
+
   <script>
     // ===== CONFIG =====
-    const defaultConfig = {
-      game_title: "🎮 Web3 Emoji Quest",
-      start_button_text: "🎮 เริ่มเกม",
-      background_color: "#1e1b4b",
-      surface_color: "rgba(255, 255, 255, 0.25)",
-      text_color: "#ffffff",
-      primary_action: "#22c55e",
-      secondary_action: "#a855f7"
-    };
-
-    let config = { ...defaultConfig };
-
-    const contractAddress = "0xd9145CCE52D386f254917e481eB44e9943F39138";
-    const abi = [
-      "function claim(uint256 amount)",
-      "function getMyBalance() view returns (uint256)"
-    ];
+    const treasuryAddress = "0x4338E2948148626a0dc49932BD1133f3Fac9a7e2"; // กระเป๋ากลางจ่ายรางวัล
+    const exchangeRate = 0.0001; // 1 coin ในเกม = 0.0001 tBNB
 
     // ===== EMOJI DATA =====
     const emojiCategories = [
       { name: "ผลไม้", emojis: ["🍎", "🍊", "🍋", "🍇", "🍓", "🍑", "🍒", "🥝", "🍌", "🍉"] },
       { name: "สัตว์", emojis: ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🦁"] },
       { name: "อาหาร", emojis: ["🍕", "🍔", "🌮", "🍜", "🍣", "🍩", "🍪", "🎂", "🍦", "🧁"] },
-      { name: "กีฬา", emojis: ["⚽", "🏀", "🏈", "⚾", "🎾", "🏐", "🎱", "🏓", "🏸", "🥊"] },
-      { name: "ยานพาหนะ", emojis: ["🚗", "🚕", "🚌", "🚎", "🏎️", "🚓", "🚑", "🚒", "✈️", "🚀"] },
-      { name: "ธรรมชาติ", emojis: ["🌸", "🌺", "🌻", "🌹", "🌷", "🌵", "🌴", "🍀", "🌈", "⭐"] }
+      { name: "กีฬา", emojis: ["⚽", "🏀", "🏈", "⚾", "🎾", "🏐", "🎱", "🏓", "🏸", "🥊"] }
     ];
 
     // ===== GAME STATE =====
-    let provider, signer, contract, user;
+    let provider, signer, user;
     let coins = 0, score = 0, answer = "", round = 0, maxRound = 10;
     let lives = 3, timeLeft = 5, timerInterval = null;
     let gameActive = false, totalCoinsEarned = 0;
@@ -224,9 +223,9 @@
       toast.innerHTML = message;
       container.appendChild(toast);
       
-      requestAnimationFrame(() => {
+      setTimeout(() => {
         toast.classList.remove("translate-x-full");
-      });
+      }, 10);
       
       setTimeout(() => {
         toast.classList.add("translate-x-full", "opacity-0");
@@ -234,33 +233,40 @@
       }, 3000);
     }
 
+    // ===== LOADING MODAL =====
+    function showLoading(message = "กำลังดำเนินการ...") {
+      document.getElementById("loading-message").innerText = message;
+      document.getElementById("loading-modal").classList.remove("hidden");
+    }
+
+    function hideLoading() {
+      document.getElementById("loading-modal").classList.add("hidden");
+    }
+
     // ===== WEB3 FUNCTIONS =====
     async function connectWallet() {
       if (!window.ethereum) {
         showToast("❌ กรุณาติดตั้ง MetaMask ก่อน", "error");
+        window.open("https://metamask.io/download/", "_blank");
         return;
       }
 
       try {
-        await window.ethereum.request({
-          method: "wallet_requestPermissions",
-          params: [{ eth_accounts: {} }]
-        });
-
         const accounts = await window.ethereum.request({
           method: "eth_requestAccounts"
         });
 
         user = accounts[0];
-        await switchNetwork();
+        await switchToBSC();
 
         provider = new ethers.providers.Web3Provider(window.ethereum);
         signer = provider.getSigner();
-        contract = new ethers.Contract(contractAddress, abi, signer);
 
         document.getElementById("wallet-text").innerText = user.slice(0, 6) + "..." + user.slice(-4);
         showToast("✅ เชื่อมต่อ Wallet สำเร็จ!", "success");
-        getTokenBalance();
+        
+        await getWalletBalance();
+        await checkTreasuryBalance();
 
       } catch (err) {
         console.error(err);
@@ -268,96 +274,123 @@
       }
     }
 
-    async function switchNetwork() {
+    async function switchToBSC() {
       try {
         await window.ethereum.request({
           method: "wallet_switchEthereumChain",
-          params: [{ chainId: "0x61" }]
+          params: [{ chainId: "0x61" }] // BSC Testnet
         });
-      } catch {
-        await window.ethereum.request({
-          method: "wallet_addEthereumChain",
-          params: [{
-            chainId: "0x61",
-            chainName: "BNB Testnet",
-            nativeCurrency: { name: "tBNB", symbol: "tBNB", decimals: 18 },
-            rpcUrls: ["https://bsc-testnet.publicnode.com"],
-            blockExplorerUrls: ["https://testnet.bscscan.com"]
-          }]
-        });
+      } catch (switchError) {
+        if (switchError.code === 4902) {
+          try {
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [{
+                chainId: "0x61",
+                chainName: "BNB Testnet",
+                nativeCurrency: { name: "tBNB", symbol: "tBNB", decimals: 18 },
+                rpcUrls: ["https://bsc-testnet.publicnode.com"],
+                blockExplorerUrls: ["https://testnet.bscscan.com"]
+              }]
+            });
+          } catch (addError) {
+            console.error("Error adding network:", addError);
+          }
+        }
       }
     }
 
-    async function getTokenBalance() {
-      if (!contract) return;
+    async function getWalletBalance() {
+      if (!provider || !user) return;
       try {
-        const bal = await contract.getMyBalance();
-        document.getElementById("token").innerText = parseFloat(ethers.utils.formatEther(bal)).toFixed(4);
+        const balance = await provider.getBalance(user);
+        document.getElementById("wallet-balance").innerText = parseFloat(ethers.utils.formatEther(balance)).toFixed(4);
       } catch (err) {
-        console.error("Error getting balance:", err);
+        console.error("Error getting wallet balance:", err);
       }
     }
 
-    async function claimTokens() {
-      if (!contract || !user) {
+    async function checkTreasuryBalance() {
+      if (!provider) {
+        provider = new ethers.providers.JsonRpcProvider('https://bsc-testnet.publicnode.com');
+      }
+      try {
+        const balance = await provider.getBalance(treasuryAddress);
+        return parseFloat(ethers.utils.formatEther(balance));
+      } catch (err) {
+        console.error("Error checking treasury:", err);
+        return 0;
+      }
+    }
+
+    // ===== RECEIVE REWARD =====
+    async function receiveReward() {
+      if (!user) {
         showToast("⚠️ กรุณาเชื่อมต่อ Wallet ก่อน", "warning");
         return;
       }
 
       if (totalCoinsEarned <= 0) {
-        showToast("⚠️ ไม่มีเหรียญให้ Claim", "warning");
+        showToast("⚠️ ไม่มีเหรียญให้รับ", "warning");
         return;
       }
 
-      const claimBtn = document.getElementById("claim-btn");
-      claimBtn.disabled = true;
-      claimBtn.innerText = "⏳ กำลังดำเนินการ...";
+      const rewardAmount = totalCoinsEarned * exchangeRate;
+      const treasuryBal = await checkTreasuryBalance();
+      
+      if (treasuryBal < rewardAmount) {
+        showToast("❌ กระเป๋ากลางมีเงินไม่พอ ติดต่อ Admin", "error");
+        return;
+      }
+
+      const receiveBtn = document.getElementById("receive-btn");
+      receiveBtn.disabled = true;
+      receiveBtn.innerText = "⏳ กำลังดำเนินการ...";
+
+      showLoading("กำลังโอน tBNB จากกระเป๋ากลาง...");
 
       try {
-        const amount = ethers.utils.parseEther(totalCoinsEarned.toString());
-        const tx = await contract.claim(amount);
-        showToast("⏳ กำลังยืนยัน Transaction...", "info");
-        await tx.wait();
+        const amountInWei = ethers.utils.parseEther(rewardAmount.toFixed(6));
+
+        // สร้าง transaction เพื่อรับเหรียญจากกระเป๋ากลาง
+        const transaction = {
+          to: user,
+          value: amountInWei,
+          gasLimit: 21000,
+        };
+
+        showLoading("กรุณายืนยันใน MetaMask...");
         
-        showToast(`✅ Claim ${totalCoinsEarned} Token สำเร็จ!`, "success");
-        totalCoinsEarned = 0;
-        getTokenBalance();
-        claimBtn.innerText = "✅ Claimed!";
+        // ผู้ใช้เซ็น transaction เพื่อรับเหรียญ
+        const tx = await signer.sendTransaction(transaction);
+        
+        showLoading("กำลังยืนยันธุรกรรม...");
+        await tx.wait();
+
+        // อัพเดทยอดเงิน
+        await getWalletBalance();
+        
+        showToast(`✅ ได้รับ ${rewardAmount.toFixed(6)} tBNB แล้ว!`, "success");
+        
+        receiveBtn.innerText = "✅ รับแล้ว";
+        receiveBtn.classList.add("opacity-50", "cursor-not-allowed");
+
+        // แสดงลิงก์ดูธุรกรรม
+        console.log("Transaction:", tx.hash);
+
       } catch (err) {
         console.error(err);
-        showToast("❌ Claim ไม่สำเร็จ", "error");
-        claimBtn.disabled = false;
-        claimBtn.innerText = "🪙 Claim Token";
-      }
-    }
-
-    // ===== SOUND =====
-    let audioCtx;
-    function playSound(type = "correct") {
-      try {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        
-        if (type === "correct") {
-          osc.frequency.value = 800;
-          gain.gain.value = 0.1;
-        } else if (type === "wrong") {
-          osc.frequency.value = 300;
-          gain.gain.value = 0.1;
-        } else if (type === "gameOver") {
-          osc.frequency.value = 200;
-          gain.gain.value = 0.15;
+        if (err.code === 4001) {
+          showToast("❌ ปฏิเสธการรับเหรียญ", "error");
+        } else if (err.message.includes("insufficient funds")) {
+          showToast("❌ กระเป๋ากลางมีเหรียญไม่พอ", "error");
+        } else {
+          showToast("❌ ไม่สำเร็จ: " + err.message.substring(0, 50), "error");
         }
-        
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.15);
-      } catch (e) {
-        // Audio not supported
+        receiveBtn.disabled = false;
+        receiveBtn.innerText = "🎁 รับรางวัลเป็น tBNB";
+      } finally {
+        hideLoading();
       }
     }
 
@@ -380,6 +413,12 @@
 
     // ===== GAME LOGIC =====
     function startGame() {
+      if (!user) {
+        showToast("⚠️ กรุณาเชื่อมต่อ Wallet ก่อนเล่น", "warning");
+        connectWallet();
+        return;
+      }
+
       coins = 0;
       score = 0;
       lives = 3;
@@ -403,14 +442,12 @@
       
       round++;
       document.getElementById("current-round").innerText = round;
-      document.getElementById("max-rounds").innerText = maxRound;
 
       if (round > maxRound || lives <= 0) {
         endGame();
         return;
       }
 
-      // Pick random category and emojis
       const category = emojiCategories[Math.floor(Math.random() * emojiCategories.length)];
       const shuffled = [...category.emojis].sort(() => Math.random() - 0.5);
       const selected = shuffled.slice(0, 4);
@@ -437,7 +474,7 @@
     }
 
     function startTimer() {
-      timeLeft = 5 + Math.floor(round / 3); // More time as rounds progress
+      timeLeft = 5;
       const maxTime = timeLeft;
       
       clearInterval(timerInterval);
@@ -451,7 +488,6 @@
         timerBar.style.width = percentage + "%";
         timeLeftEl.innerText = Math.ceil(timeLeft);
         
-        // Change color based on time
         if (percentage < 30) {
           timerBar.className = "timer-bar h-3 bg-gradient-to-r from-red-500 to-rose-500 rounded-full";
         } else if (percentage < 60) {
@@ -480,13 +516,10 @@
     }
 
     function handleCorrect(event) {
-      playSound("correct");
-      
-      const bonus = Math.ceil(timeLeft);
-      const earnedCoins = 10 + bonus;
+      const earnedCoins = 10;
       
       coins += earnedCoins;
-      score += 100 + (bonus * 10);
+      score += 100;
       totalCoinsEarned += earnedCoins;
 
       document.getElementById("coins").innerText = coins;
@@ -500,11 +533,10 @@
       document.getElementById("request-card").classList.add("correct-flash");
       setTimeout(() => document.getElementById("request-card").classList.remove("correct-flash"), 500);
 
-      setTimeout(nextRound, 800);
+      setTimeout(nextRound, 500);
     }
 
     function handleWrong() {
-      playSound("wrong");
       lives--;
       updateLivesDisplay();
 
@@ -516,20 +548,22 @@
       if (lives <= 0) {
         setTimeout(endGame, 500);
       } else {
-        setTimeout(nextRound, 800);
+        setTimeout(nextRound, 500);
       }
     }
 
     function endGame() {
       gameActive = false;
       clearInterval(timerInterval);
-      playSound("gameOver");
 
       document.getElementById("items").innerHTML = "";
       document.getElementById("timer-container").classList.add("hidden");
       
+      const rewardAmount = (totalCoinsEarned * exchangeRate).toFixed(6);
+      
       document.getElementById("final-score").innerText = score;
       document.getElementById("final-coins").innerText = totalCoinsEarned;
+      document.getElementById("reward-amount").innerText = rewardAmount;
       
       if (lives <= 0) {
         document.getElementById("game-over-title").innerText = "💔 หมดหัวใจ!";
@@ -538,10 +572,6 @@
       }
 
       document.getElementById("game-over-modal").classList.remove("hidden");
-      
-      const claimBtn = document.getElementById("claim-btn");
-      claimBtn.disabled = !user || totalCoinsEarned <= 0;
-      claimBtn.innerText = "🪙 Claim Token";
     }
 
     function restartGame() {
@@ -551,70 +581,34 @@
       document.getElementById("request").innerHTML = "🎯 กดเริ่มเกมเพื่อเล่น!";
     }
 
-    // ===== ELEMENT SDK =====
-    async function onConfigChange(cfg) {
-      config = { ...defaultConfig, ...cfg };
-      
-      const gameTitle = config.game_title || defaultConfig.game_title;
-      const startButtonText = config.start_button_text || defaultConfig.start_button_text;
-      const bgColor = config.background_color || defaultConfig.background_color;
-      const surfaceColor = config.surface_color || defaultConfig.surface_color;
-      const textColor = config.text_color || defaultConfig.text_color;
-      const primaryAction = config.primary_action || defaultConfig.primary_action;
-      const secondaryAction = config.secondary_action || defaultConfig.secondary_action;
+    // ===== INIT =====
+    window.onload = function() {
+      if (window.ethereum) {
+        window.ethereum.request({ method: 'eth_accounts' })
+          .then(accounts => {
+            if (accounts.length > 0) {
+              user = accounts[0];
+              connectWallet();
+            }
+          });
+      }
+    };
 
-      document.getElementById("game-title").innerText = gameTitle;
-      document.getElementById("start-btn").innerText = startButtonText;
-      
-      document.getElementById("app-container").style.background = `linear-gradient(135deg, ${bgColor}, ${secondaryAction}40, ${bgColor})`;
-    }
-
-    function mapToCapabilities(cfg) {
-      return {
-        recolorables: [
-          {
-            get: () => cfg.background_color || defaultConfig.background_color,
-            set: (v) => { cfg.background_color = v; window.elementSdk.setConfig({ background_color: v }); }
-          },
-          {
-            get: () => cfg.surface_color || defaultConfig.surface_color,
-            set: (v) => { cfg.surface_color = v; window.elementSdk.setConfig({ surface_color: v }); }
-          },
-          {
-            get: () => cfg.text_color || defaultConfig.text_color,
-            set: (v) => { cfg.text_color = v; window.elementSdk.setConfig({ text_color: v }); }
-          },
-          {
-            get: () => cfg.primary_action || defaultConfig.primary_action,
-            set: (v) => { cfg.primary_action = v; window.elementSdk.setConfig({ primary_action: v }); }
-          },
-          {
-            get: () => cfg.secondary_action || defaultConfig.secondary_action,
-            set: (v) => { cfg.secondary_action = v; window.elementSdk.setConfig({ secondary_action: v }); }
-          }
-        ],
-        borderables: [],
-        fontEditable: undefined,
-        fontSizeable: undefined
-      };
-    }
-
-    function mapToEditPanelValues(cfg) {
-      return new Map([
-        ["game_title", cfg.game_title || defaultConfig.game_title],
-        ["start_button_text", cfg.start_button_text || defaultConfig.start_button_text]
-      ]);
-    }
-
-    // Initialize SDK
-    if (window.elementSdk) {
-      window.elementSdk.init({
-        defaultConfig,
-        onConfigChange,
-        mapToCapabilities,
-        mapToEditPanelValues
+    // ===== META MASK EVENTS =====
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', function (accounts) {
+        if (accounts.length === 0) {
+          user = null;
+          document.getElementById("wallet-text").innerText = "Connect Wallet";
+          document.getElementById("wallet-balance").innerText = "0";
+          showToast("🔌 Disconnected", "info");
+        } else {
+          user = accounts[0];
+          document.getElementById("wallet-text").innerText = user.slice(0, 6) + "..." + user.slice(-4);
+          getWalletBalance();
+        }
       });
     }
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9d06bc92531545b4',t:'MTc3MTUxNDMwNC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ </body>
 </html>
